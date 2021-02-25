@@ -58,4 +58,6 @@ struct AgileGlobal
 	uint32_t server_connection_pool_size = 100;
 	uint32_t client_connection_pool_size = 10;
 
+	uint32_t timer_loop_val = 10;//定时器时间粒度单位毫秒
+
 };

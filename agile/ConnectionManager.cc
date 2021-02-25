@@ -274,6 +274,7 @@ void ConnectionManager::FreeConns()
 				(m_connFuncs.closeCallback)(it->second); 
 			}
 			it->second->Stop();
+			it->second->FreeConnect();
 		
 			delete it->second;
 			it->second = nullptr;

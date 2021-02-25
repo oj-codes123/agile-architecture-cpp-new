@@ -10,11 +10,9 @@ namespace agile
 
 struct Utility
 {
-	static void AddSecTimer(uint32_t secVal,  std::function<void(uint64_t)> callbackFunc, int id=0);
+	static void AddSecTimer(uint32_t secVal,  std::function<void(uint64_t)> callbackFunc);
 	
-	static void AddMSecTimer(uint32_t msecVal, std::function<void(uint64_t)> callbackFunc, int id=0);
-	
-	static void AddCurMSecTimer(uint64_t curMSecVal, std::function<void(uint64_t)> callbackFunc, int id=0);
+	static void AddMSecTimer(uint32_t msecVal, std::function<void(uint64_t)> callbackFunc);
 	
 	static uint64_t CurSec();
 	

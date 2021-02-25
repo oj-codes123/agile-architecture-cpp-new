@@ -8,11 +8,6 @@
 
 namespace agile
 {
-	
-TcpClient::TcpClient()
-{
-	m_connMgr = nullptr;
-}
 
 TcpClient::~TcpClient()
 {
@@ -37,11 +32,6 @@ bool TcpClient::Init(bool flag)
 	SignalHandler::Instance().AddConnectionManager(m_connMgr);
 
 	return true;
-}
-
-IConnectionManager* TcpClient::GetConnectionManager()
-{
-	return m_connMgr;
 }
 
 int TcpClient::Connect(const std::string& name, const std::string& ip, int port, uint32_t timeout, bool reConnect)

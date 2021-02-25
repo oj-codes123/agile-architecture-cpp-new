@@ -20,10 +20,14 @@ public:
 	
 	void DeleteEpoll(NetEpoll* epollObj);
 
+	void StopAndExit();
+
 private:
 	EpollLoop(){ }
 	
 private:
+	bool m_exit = false;
+	bool m_running = false;
     NetEpoll* m_sharedEpoll = nullptr;
     std::list<NetEpoll*> m_epolls;
 };

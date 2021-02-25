@@ -23,14 +23,13 @@ EpollLoop::~EpollLoop()
 
 void EpollLoop::Run()
 {
-	static bool isRunning = false;
-    if(isRunning) 
+    if(m_running) 
 	{ 
 		return; 
 	}
-    isRunning = true;
+    m_running = true;
 
-    while(true)
+    while(m_running)
     {
 		if(m_sharedEpoll)
 		{
@@ -46,8 +45,19 @@ void EpollLoop::Run()
 		}
         Timer::Instance().Loop();
     }
-	
+
     LOG_INFO_S << "finish loop epoll size:" << (uint32_t)m_epolls.size();
+	
+	if(m_exit)
+	{
+		exit(1);
+	}
+}
+
+void EpollLoop::StopAndExit()
+{
+	m_exit = true;
+	m_running = false;
 }
 
 NetEpoll* EpollLoop::ShareEpoll()
@@ -84,12 +94,19 @@ void EpollLoop::DeleteEpoll(NetEpoll* epollObj)
 		return;
 	}
 	
-	for(auto it = m_epolls.begin(); it != m_epolls.end(); it++)
+	auto it = m_epolls.begin();
+	while( it != m_epolls.end() )
 	{
 		if((*it)->GetEpollId() == epollObj->GetEpollId() )
 		{
-			m_epolls.erase(it);
-			return;
+			it = m_epolls.erase(it);
+			delete epollObj;
+			epollObj = nullptr;
+			break;
+		}
+		else
+		{
+			it++;
 		}
 	}	
 }

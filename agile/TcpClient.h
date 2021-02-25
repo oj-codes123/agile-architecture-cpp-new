@@ -22,13 +22,13 @@ public:
 	
 	int Connect(const std::string& name, const std::string& ip, int port, int buffSize, uint32_t timeout, bool reConnect);
 	
-	IConnectionManager* GetConnectionManager();
+	IConnectionManager* GetConnectionManager() { return m_connMgr; }
 
 private:
-	TcpClient();
+	TcpClient(){ }
 
 private:
-    IConnectionManager* m_connMgr;
+    IConnectionManager* m_connMgr = nullptr;
 };
 
 }

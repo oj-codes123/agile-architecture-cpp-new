@@ -37,7 +37,7 @@ void TcpConnection::FreeConnect()
 {
    if( TcpConnState_Closed != m_state && TcpConnState_NULL != m_state )
    {
-	   LOG_INFO_S << "Free connection socketId:" << m_socket.GetSocketId() << ",intKey:" << m_intKey
+	   LOG_DEBUG_S << "Free connection socketId:" << m_socket.GetSocketId() << ",intKey:" << m_intKey
 		          << ", strKey:" << m_key << ", name:" << m_name;
 				   
        DeleteEvent();
@@ -48,7 +48,7 @@ void TcpConnection::FreeConnect()
 
 void TcpConnection::Close()
 {
-    LOG_INFO("socket:%d", m_socket.GetSocketId());
+    LOG_DEBUG("socket:%d", m_socket.GetSocketId());
 
 	if(TcpConnState_Closing == m_state || TcpConnState_Closed == m_state)
 	{
@@ -142,13 +142,10 @@ int TcpConnection::Send(const char* buff, int buff_len)
 	}
 	
 	m_writeBuffer.Write(buff, buff_len);
-	if(!IsWriting())
-	{
-		EnableWriting();
-	}
+	EnableWriting();
 	return 0;
 
-	/*int traceIndex = 0;
+	int traceIndex = 0;
 	int ret = SendCharsHelper(buff, traceIndex, buff_len);
 	while (ret < (int)buff_len && ret > 0)
 	{
@@ -156,7 +153,7 @@ int TcpConnection::Send(const char* buff, int buff_len)
 		buff_len   -= ret;
 		ret = SendCharsHelper(buff, traceIndex, buff_len);
 	}
-	return ret > 0 ? buff_len : -1;*/
+	return ret > 0 ? buff_len : -1;
 }
 
 void TcpConnection::HandleWrite()
@@ -165,16 +162,21 @@ void TcpConnection::HandleWrite()
 	uint32_t rIndex = m_writeBuffer.GetReadIndex();
 	uint32_t wIndex = m_writeBuffer.GetWriteIndex();
 	uint32_t packetSize = (uint32_t)(wIndex - rIndex);
-
-	int len = TcpConnection::SendCharsHelper(m_writeBuffer.GetBuffer(), rIndex, packetSize);
-	if(len >= (int)packetSize)
+	if(packetSize > 0)
 	{
-		DisableWriting();
-		m_writeBuffer.ResetIndex();
-	} 
-	else 
+		int len = TcpConnection::SendCharsHelper(m_writeBuffer.GetBuffer(), rIndex, packetSize);
+		if(len >= (int)packetSize)
+		{
+			m_writeBuffer.ResetIndex();
+		} 
+		else 
+		{
+			EnableWriting();
+		}
+	}
+	else
 	{
-		EnableWriting();
+		LOG_DEBUG_S << " packetSize <= 0 ";
 	}
 }
 

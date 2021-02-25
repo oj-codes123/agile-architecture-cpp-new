@@ -1,10 +1,21 @@
 
 #include "Timer.h"
 #include "Logger.h"
+#include "AgileGlobal.h"
 #include <sys/time.h>
 
 namespace agile
 {
+
+Timer::Timer()
+{
+	m_timerVal = AgileGlobal::Instance().timer_loop_val;
+	if(m_timerVal != 1 && m_timerVal != 10 && m_timerVal != 100 && m_timerVal%1000 != 0)
+	{
+		LOG_WARN_S << "timer_loop_val error val is " << m_timerVal << " default value is 10";
+		m_timerVal = 10;
+	}
+}
 
 Timer::~Timer()
 {
@@ -38,12 +49,11 @@ uint64_t Timer::GetCurSec()
 	return (uint64_t) tv.tv_sec;
 }
 
-Timer::TimerObj* Timer::GetTimerObj(uint64_t msecVal, TimerCallback callbackFunc, int id)
+Timer::TimerObj* Timer::GetTimerObj(uint64_t msecVal, TimerCallback callbackFunc)
 {
 	if(m_timersCache.empty())
 	{
 		Timer::TimerObj* obj = new Timer::TimerObj();
-		obj->id  = id;
 		obj->val = msecVal;
 		obj->func = callbackFunc;
 		return obj;
@@ -51,7 +61,6 @@ Timer::TimerObj* Timer::GetTimerObj(uint64_t msecVal, TimerCallback callbackFunc
 	else
 	{
 		Timer::TimerObj* obj = m_timersCache.front();
-		obj->id  = id;
 		obj->val = msecVal;
 		obj->func = callbackFunc;
 		m_timersCache.pop_front();
@@ -59,39 +68,69 @@ Timer::TimerObj* Timer::GetTimerObj(uint64_t msecVal, TimerCallback callbackFunc
 	}
 }
 
-void Timer::AddSecTimer(uint32_t secVal, TimerCallback callbackFunc, int id)
+void Timer::AddSecTimer(uint32_t secVal, TimerCallback callbackFunc)
 {
-	uint64_t triggertMsecVal = ( GetCurMSec() + secVal * 1000);// ( GetCurSec() + secVal ) * 1000;
-	AddCurMSecTimer(triggertMsecVal, callbackFunc, id);
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+
+	uint64_t triggertMsecVal = 0;
+	switch(m_timerVal)
+	{
+		case 1:
+		    triggertMsecVal = (uint64_t) ( tv.tv_sec * 1000 + tv.tv_usec / 1000 + secVal * 1000 );
+			break;
+		case 10:
+		    triggertMsecVal = (uint64_t) ( tv.tv_sec * 100 + tv.tv_usec / 10000 + secVal * 100 );
+			break;
+		case 100:
+		    triggertMsecVal = (uint64_t) ( tv.tv_sec * 10 + tv.tv_usec / 100000 + secVal * 10 );
+			break;
+		default:
+		 	triggertMsecVal = (uint64_t) ( tv.tv_sec + secVal);
+			break;
+	}
+	AddCurMSecTimer(triggertMsecVal, callbackFunc);
 }
 
-void Timer::AddMSecTimer(uint32_t msecVal, TimerCallback callbackFunc, int id)
+void Timer::AddMSecTimer(uint32_t msecVal, TimerCallback callbackFunc)
 {
-	uint64_t triggertMsecVal = ( GetCurMSec() + msecVal );
-	AddCurMSecTimer(triggertMsecVal, callbackFunc, id);
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+
+	uint64_t triggertMsecVal = 0;
+	switch(m_timerVal)
+	{
+		case 1:
+			triggertMsecVal = (uint64_t) ( tv.tv_sec * 1000 + tv.tv_usec / 1000 + msecVal);
+			break;
+		case 10:
+		    triggertMsecVal = (uint64_t) ( tv.tv_sec * 100 + tv.tv_usec / 10000 + msecVal / 10 );
+			break;
+		case 100:
+		    triggertMsecVal = (uint64_t) ( tv.tv_sec * 10 + tv.tv_usec / 100000 + msecVal / 100 );
+			break;
+		default:
+		 	triggertMsecVal = (uint64_t) ( tv.tv_sec + msecVal / 1000);
+			break;
+	}
+	AddCurMSecTimer(triggertMsecVal, callbackFunc);
 }
 
-void Timer::AddCurMSecTimer(uint64_t curMSecVal, TimerCallback callbackFunc, int id)
-{	
-	curMSecVal /= 10;
-	curMSecVal *= 10;
-
+void Timer::AddCurMSecTimer(uint64_t curMSecVal, TimerCallback callbackFunc)
+{
 	auto it = m_timers.find(curMSecVal);
 	if(it != m_timers.end())
 	{
-		Timer::TimerObj* obj = GetTimerObj(curMSecVal, callbackFunc, id);
+		Timer::TimerObj* obj = GetTimerObj(curMSecVal, callbackFunc);
 		it->second.push_back(obj);
-
-		//LOG_DEBUG(" add timer id:%d, val:%llu", obj->id, obj->val);
 	}
 	else
 	{
 		std::list<Timer::TimerObj*>& newVal = m_timers[curMSecVal];
-		Timer::TimerObj* obj = GetTimerObj(curMSecVal, callbackFunc, id);
+		Timer::TimerObj* obj = GetTimerObj(curMSecVal, callbackFunc);
 		newVal.push_back(obj);
-
-		//LOG_DEBUG(" add timer id:%d, val:%llu", obj->id, obj->val);
 	}
+
 	if(m_traceTime == 0)
 	{
 		m_traceTime = curMSecVal;
@@ -106,30 +145,54 @@ void Timer::AddCurMSecTimer(uint64_t curMSecVal, TimerCallback callbackFunc, int
 
 }
 
-void Timer::SetCacheSize(uint32_t val)
+void Timer::Loop()
 {
-	m_cacheSize = val;
-}
-
-void Timer::Loop(uint64_t curMsec)
-{
-	if(0 == curMsec)
-	{
-		curMsec = GetCurMSec();
+	size_t timerNum = m_timers.size();
+	if(timerNum == 0){
+		return;
 	}
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
 	
-	curMsec /= 10;
-	curMsec *= 10;
+	uint64_t curMsec = 0;
+	switch(m_timerVal)
+	{
+		case 1:
+			{
+		    	curMsec = (uint64_t) ( tv.tv_sec * 1000 + tv.tv_usec / 1000 );
+				m_curMSec = curMsec;
+			}
+			break;
+		case 10:
+			{
+		    	curMsec = (uint64_t) ( tv.tv_sec * 100 + tv.tv_usec / 10000 );
+				m_curMSec = curMsec * 10;
+			}
+			break;
+		case 100:
+			{
+		    	curMsec = (uint64_t) ( tv.tv_sec * 10 + tv.tv_usec / 100000 );
+				m_curMSec = curMsec * 100;
+			}
+			break;
+		default:
+			{
+		    	curMsec = (uint64_t) ( tv.tv_sec );
+				m_curMSec = curMsec * 1000;
+			}
+			break;
+	}
 
 	uint64_t i = m_traceTime;
-	while(i <= curMsec )
+	while(i <= curMsec && timerNum > 0)
 	{
 		auto it = m_timers.find(i);
 		if(it != m_timers.end())
 		{
+			--timerNum;
 			for(auto& it2 : it->second)
 			{
-				//LOG_DEBUG(" call timer id:%d, val:%llu", it2->id, it2->val);
 				it2->func(curMsec);
 
 				if(m_cacheSize > m_timersCache.size())
@@ -144,7 +207,7 @@ void Timer::Loop(uint64_t curMsec)
 			it->second.clear();
 			m_timers.erase(it);
 		}
-		i += 10;
+		++i;
 	}
 	m_traceTime = curMsec;
 }

@@ -1,6 +1,7 @@
 
 #include <assert.h>
 #include <signal.h>
+#include "EpollLoop.h"
 #include "SignalHandler.h"
 #include "ConnectionManager.h"
 
@@ -73,7 +74,7 @@ void SignalHandler::CallStopSignalFunc(int signalVal)
 	
 	StopAllConnectionManager();
 
-	exit(0);
+	EpollLoop::Instance().StopAndExit();
 }
 
 void SignalHandler::CallEventSignalFunc(int signalVal)

@@ -9,19 +9,14 @@
 namespace agile
 {
 	
-void Utility::AddSecTimer(uint32_t secVal, std::function<void(uint64_t)> callbackFunc, int id)
+void Utility::AddSecTimer(uint32_t secVal, std::function<void(uint64_t)> callbackFunc)
 {
-	Timer::Instance().AddSecTimer(secVal, callbackFunc, id);
+	Timer::Instance().AddSecTimer(secVal, callbackFunc);
 }
 	
-void Utility::AddMSecTimer(uint32_t msecVal, std::function<void(uint64_t)> callbackFunc, int id)
+void Utility::AddMSecTimer(uint32_t msecVal, std::function<void(uint64_t)> callbackFunc)
 {
-	Timer::Instance().AddMSecTimer(msecVal, callbackFunc, id);
-}
-
-void AddCurMSecTimer(uint64_t curMSecVal, std::function<void(uint64_t)> callbackFunc, int id)
-{
-	Timer::Instance().AddCurMSecTimer(curMSecVal, callbackFunc, id);
+	Timer::Instance().AddMSecTimer(msecVal, callbackFunc);
 }
 
 uint64_t Utility::CurSec()
@@ -33,7 +28,6 @@ uint64_t Utility::CurMSec()
 {
 	struct timeval tv;
 	gettimeofday(&tv,NULL);
-	
 	return (uint64_t) ( tv.tv_sec * 1000 + tv.tv_usec / 1000 ); 
 }
 
