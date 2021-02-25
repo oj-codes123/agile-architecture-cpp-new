@@ -1,5 +1,5 @@
 
-#include "../agile/Agile.h"
+#include "Agile.h"
 
 using namespace agile;
 
@@ -70,11 +70,13 @@ public:
 		sender << score;
 		sender << name << score << val;
 		
-		LOG_INFO(" [client] send to server ");
+		static int senderNum = 0;
+		++senderNum;
+		LOG_INFO(" [client] send to server num:%d", senderNum);
 		
 		TcpClient::Instance().GetConnectionManager()->BroadcastConns("test_client", sender);
 		
-		Utility::AddSecTimer(2, std::bind(&ClientTest::SendMsgTimer, &ClientTest::Instance(), std::placeholders::_1), 100);
+		Utility::AddMSecTimer(300, std::bind(&ClientTest::SendMsgTimer, &ClientTest::Instance(), std::placeholders::_1));
 	}
 	
 	int OnReceive(Connection* conn)
@@ -91,9 +93,13 @@ public:
 			LOG_INFO(" [client] ping message");
 			return 0;
 		}
+
+		static int receiverNum = 0;
+		++receiverNum;
+
 		buffer >> name >> score >> val;
 		
-		LOG_INFO(" [client] size:%d, name:%s, score:%d, val:%f", size, name.c_str(), score, val);
+		LOG_INFO(" [client] size:%d, name:%s, score:%d, val:%f num:%d", size, name.c_str(), score, val, receiverNum);
 		return 0;
 	}
 	
@@ -107,6 +113,16 @@ public:
 	{
 		LOG_INFO(" [client] on error ");
 		return 0;
+	}
+
+	void OnStopSignalCallback(int val)
+	{
+		LOG_INFO(" [client] OnStopSignalCallback val:%d ", val);
+	}
+	
+    void OnEventSignalCallback(int val)
+	{
+		LOG_INFO(" [client] OnEventSignalCallback val:%d ", val);
 	}
 	
 private:
@@ -246,10 +262,11 @@ int main(int argc,char *argv[])
 {
 	if(argc > 1)
 	{
-		Logger::InitLog("test_client_log", 1024 * 10);
+		//Logger::InitLog("test_client_log", 1024 * 10);
+		Logger::InitLog("test_client_log");
 		
 		TcpClient::Instance().Init(false);
-		TcpClient::Instance().GetConnectionManager()->SetConnectionDelegateFacotry( new ClientDelegateFacotry() );
+		//TcpClient::Instance().GetConnectionManager()->SetConnectionDelegateFacotry( new ClientDelegateFacotry() );
 		TcpClient::Instance().GetConnectionManager()->SetReadCallback( std::bind(&ClientTest::OnReceive, &ClientTest::Instance(), std::placeholders::_1) );
 		TcpClient::Instance().GetConnectionManager()->SetCloseCallback( std::bind(&ClientTest::OnClosed, &ClientTest::Instance(), std::placeholders::_1) );
 		TcpClient::Instance().GetConnectionManager()->SetErrorCallback( std::bind(&ClientTest::OnError, &ClientTest::Instance(), std::placeholders::_1) );
@@ -262,7 +279,10 @@ int main(int argc,char *argv[])
 		
 		TcpClient::Instance().GetConnectionManager()->SetConnectionRunTime(20000);
 		TcpClient::Instance().GetConnectionManager()->SetConnectionPingTime(10);
-		Utility::AddSecTimer(5, std::bind(&ClientTest::SendMsgTimer, &ClientTest::Instance(), std::placeholders::_1), 100);
+		Utility::AddSecTimer(2, std::bind(&ClientTest::SendMsgTimer, &ClientTest::Instance(), std::placeholders::_1));
+				
+		Utility::SetOnStopSignalCallback( std::bind(&ClientTest::OnStopSignalCallback, &ClientTest::Instance(), std::placeholders::_1) );
+		Utility::SetOnEventSignalCallback( std::bind(&ClientTest::OnEventSignalCallback, &ClientTest::Instance(), std::placeholders::_1) );
 		
 		TcpClient::Instance().Start();
 	}
@@ -276,7 +296,7 @@ int main(int argc,char *argv[])
 		server.Init(false);
 		server.AddListen("INADDR_ANY", 3638);
 		
-		server.GetConnectionManager()->SetConnectionDelegateFacotry( new ServerDelegateFacotry() );
+		//server.GetConnectionManager()->SetConnectionDelegateFacotry( new ServerDelegateFacotry() );
 		server.GetConnectionManager()->SetNewCallback( std::bind(&ServerTest::OnNew, &ServerTest::Instance(), std::placeholders::_1) );
 		server.GetConnectionManager()->SetReadCallback( std::bind(&ServerTest::OnReceive, &ServerTest::Instance(), std::placeholders::_1) );
 		server.GetConnectionManager()->SetCloseCallback( std::bind(&ServerTest::OnClosed, &ServerTest::Instance(), std::placeholders::_1) );
